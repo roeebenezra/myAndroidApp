@@ -1,0 +1,46 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+.idea/
+.gradle/
+/.idea/tasks.xml
+/.idea/gradle.xml
+/.idea/dictionaries
+/gradle/wrapper/gradle-wrapper.properties
+/gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio Patch Configuration
+*.orig
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Keystore files
+*.keystore
+
+# External native build folder generated in Android Studio 2.2 and later
+/build/
+/captures/
+
+# Gradle files
+gradle-app.iml
+build/
+/gradle
+
+# Avoid running Gradle's 'gradlew' from the root of your project
+gradlew
+gradlew.bat
+/app/build/
