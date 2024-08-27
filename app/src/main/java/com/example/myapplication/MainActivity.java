@@ -126,11 +126,6 @@ public class MainActivity extends AppCompatActivity {
                 String lastName = etLastName.getText().toString();
                 String avatarUrl = etAvatarUrl.getText().toString();
 
-                if (isValidEmail(email)) {
-                    etEmail.setError("Invalid email address");
-                    return;
-                }
-
                 if (firstName.isEmpty()) {
                     etFirstName.setError("First name is required");
                     return;
@@ -141,6 +136,10 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
+                if (isValidEmail(email)) {
+                    etEmail.setError("Invalid email address");
+                    return;
+                }
 
                 if (isValidUrl(avatarUrl)) {
                     etAvatarUrl.setError("Invalid URL");
