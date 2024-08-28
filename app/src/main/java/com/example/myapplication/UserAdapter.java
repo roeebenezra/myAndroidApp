@@ -55,24 +55,11 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         holder.itemView.setAlpha(0);
         holder.itemView.animate().alpha(1).setDuration(500).start();
 
-        // Scale up from smaller size
-        // holder.itemView.setScaleX(0.8f);
-        // holder.itemView.setScaleY(0.8f);
-        // holder.itemView.animate().scaleX(1).scaleY(1).setDuration(300).start();
+        holder.itemView.setOnClickListener(v -> onUserClickListener.onUserClick(user));
 
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onUserClickListener.onUserClick(user);
-            }
-        });
-
-        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                onUserLongClickListener.onUserLongClick(user);
-                return true;
-            }
+        holder.itemView.setOnLongClickListener(v -> {
+            onUserLongClickListener.onUserLongClick(user);
+            return true;
         });
     }
 

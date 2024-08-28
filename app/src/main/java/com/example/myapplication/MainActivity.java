@@ -2,7 +2,6 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -62,17 +61,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<User> users = response.body().getData();
+                    userList = response.body().getData();
 
                     userApi.getUsers(secondPage).enqueue(new Callback<>() {  // Fetch the second page
                         @Override
                         public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
                             if (response.isSuccessful() && response.body() != null) {
                                 List<User> moreUsers = response.body().getData();
-                                users.addAll(moreUsers);  // Combine both pages
+                                userList.addAll(moreUsers);  // Combine both pages
 
                                 // Save combined users to the database and display them
-                                saveUsersToDatabase(users);
+                                saveUsersToDatabase(userList);
                             }
                         }
 
@@ -123,8 +122,6 @@ public class MainActivity extends AppCompatActivity {
         EditText etAvatarUrl = view.findViewById(R.id.etAvatarUrl);
         Button btnAddUser = view.findViewById(R.id.btnAddUser);
 
-        assert btnAddUser != null;
-
         // If editing, pre-fill the fields with the user's current information
         if (isEditMode && user != null) {
             etFirstName.setText(user.getFirst_name());
@@ -145,22 +142,9 @@ public class MainActivity extends AppCompatActivity {
             String email = etEmail.getText().toString().trim();
             String avatarUrl = etAvatarUrl.getText().toString().trim();
 
-            // Validate inputs
-            if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty()) {
-                Toast.makeText(MainActivity.this, "All fields are required", Toast.LENGTH_SHORT).show();
+            // Validate user input fields
+            if (!validateInputs(firstName, lastName, email, avatarUrl))
                 return;
-            }
-
-            // Validate email and avatar URL
-            if (!isValidEmail(email)) {
-                Toast.makeText(MainActivity.this, "Invalid email address", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (!isValidUrl(avatarUrl)) {
-                Toast.makeText(MainActivity.this, "Invalid URL for avatar", Toast.LENGTH_SHORT).show();
-                return;
-            }
 
             if (isEditMode && user != null) {
                 // Update existing user
@@ -181,6 +165,37 @@ public class MainActivity extends AppCompatActivity {
 
         // Show the dialog
         dialog.show();
+    }
+
+    private boolean validateInputs(String firstName, String lastName, String email, String avatarUrl) {
+        // Validate inputs
+        if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || avatarUrl.isEmpty()) {
+            Toast.makeText(MainActivity.this, "All fields are required", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        // Validate email and avatar URL
+        if (!isValidEmail(email)) {
+            Toast.makeText(MainActivity.this, "Invalid email address", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        if (!isValidUrl(avatarUrl)) {
+            Toast.makeText(MainActivity.this, "Invalid URL for avatar", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean isValidEmail(CharSequence email) {
+        // Return true if the email matches the email pattern
+        return Patterns.EMAIL_ADDRESS.matcher(email).matches();
+    }
+
+    private boolean isValidUrl(String url) {
+        // Return true if the URL matches the URL pattern
+        return Patterns.WEB_URL.matcher(url).matches();
     }
 
     private void showAddUserDialog() {
@@ -237,16 +252,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private boolean isValidEmail(CharSequence email) {
-        // Return true if the email is not empty and matches the email pattern
-        return !TextUtils.isEmpty(email) && Patterns.EMAIL_ADDRESS.matcher(email).matches();
-    }
-
-    private boolean isValidUrl(String url) {
-        // Return true if the URL is not empty and matches the URL pattern
-        return !TextUtils.isEmpty(url) && Patterns.WEB_URL.matcher(url).matches();
-    }
-
     private void addUserToDatabase(User user) {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
@@ -267,30 +272,13 @@ public class MainActivity extends AppCompatActivity {
 
         executorService.execute(() -> {
             // Perform the database query on a background thread
-            List<User> userList = userDao.getAllUsers();
+            List<User> userListFromDb = userDao.getAllUsers();
 
             // Update the UI on the main thread
             runOnUiThread(() -> {
                 // Pass the full list to the adapter
-                userAdapter.setUserList(userList);
+                userAdapter.setUserList(userListFromDb);
             });
         });
-    }
-
-
-    private void printUserList() {
-        if (userList != null && !userList.isEmpty()) {
-            Log.d("UserListInfo", "userList size: " + userList.size());
-            for (User user : userList) {
-                Log.d("UserListInfo", "ID: " + user.getId());
-                Log.d("UserListInfo", "First Name: " + user.getFirst_name());
-                Log.d("UserListInfo", "Last Name: " + user.getLast_name());
-                Log.d("UserListInfo", "Email: " + user.getEmail());
-                Log.d("UserListInfo", "Avatar URL: " + user.getAvatar());
-                Log.d("UserListInfo", "-------------------------");
-            }
-        } else {
-            Log.d("UserListInfo", "User list is empty or null.");
-        }
     }
 }
