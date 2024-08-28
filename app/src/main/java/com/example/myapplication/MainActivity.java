@@ -1,19 +1,17 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.text.TextUtils;
 import android.util.Patterns;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import android.annotation.SuppressLint;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
-import android.app.Dialog;
-import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -24,10 +22,13 @@ import retrofit2.Response;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
-    private RecyclerView recyclerView;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private UserAdapter userAdapter;
+    private List<User> userList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,8 +37,10 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(findViewById(R.id.toolbar));
 
-        recyclerView = findViewById(R.id.recyclerView);
+        RecyclerView recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        findViewById(R.id.fab).setOnClickListener(view -> showAddUserDialog());
 
         userAdapter = new UserAdapter(this, new ArrayList<>(),
                 this::showEditUserDialog,               // Open dialog to edit user
@@ -45,193 +48,161 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerView.setAdapter(userAdapter);
 
-        clearDatabaseAndFetchUsers();  // Clear the database and fetch users on startup
-
-        findViewById(R.id.fab).setOnClickListener(view -> showAddUserDialog());
+        loadUsersFromApi();  // fetch users on startup
     }
 
-    @SuppressLint("StaticFieldLeak")
-    private void clearDatabaseAndFetchUsers() {
-        AppDatabase db = AppDatabase.getDatabase(this);
-        UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                userDao.deleteAllUsers();  // Clear all rows in the users table
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                fetchUsersFromApi();  // Fetch users after clearing the database
-            }
-        }.execute();
-    }
-
-    private void fetchUsersFromApi() {
+    private void loadUsersFromApi() {
         UserApi userApi = ApiClient.getRetrofitInstance().create(UserApi.class);
-        Call<UserResponse> call = userApi.getUsers();
+        // Page numbers
+        int firstPage = 1;
+        int secondPage = 2;
 
-        call.enqueue(new Callback<>() {
+        userApi.getUsers(firstPage).enqueue(new Callback<>() {  // Fetch the first page
             @Override
             public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<User> userList = response.body().getData();
-                    saveUsersToDatabase(userList);
+                    List<User> users = response.body().getData();
+
+                    userApi.getUsers(secondPage).enqueue(new Callback<>() {  // Fetch the second page
+                        @Override
+                        public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                List<User> moreUsers = response.body().getData();
+                                users.addAll(moreUsers);  // Combine both pages
+
+                                // Save combined users to the database and display them
+                                saveUsersToDatabase(users);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(@NotNull Call<UserResponse> call, @NotNull Throwable t) {
+                            Log.e("API Error", "Failed to load second page of users", t);
+                        }
+                    });
                 }
             }
 
             @Override
             public void onFailure(@NotNull Call<UserResponse> call, @NotNull Throwable t) {
-                Log.e("API Error", "Failed to fetch users", t);
+                Log.e("API Error", "Failed to load first page of users", t);
             }
         });
     }
 
-    @SuppressLint("StaticFieldLeak")
     public void saveUsersToDatabase(List<User> userList) {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                userDao.insertAll(userList);
-                return null;
+        executorService.execute(() -> {
+            // Perform the database insertion operation on a background thread
+            userDao.insertAll(userList);
+
+            // Update the UI on the main thread after the insertion is complete
+            // Load users into RecyclerView after saving
+            runOnUiThread(this::loadUsersFromDatabase);
+        });
+    }
+
+
+    @SuppressLint("SetTextI18n")
+    private void showUserDialog(User user, boolean isEditMode) {
+        // Initialize the dialog builder
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(isEditMode ? "Edit User" : "Add User");
+
+        // Inflate the dialog layout
+        View view = getLayoutInflater().inflate(R.layout.dialog_add_user, null);
+        builder.setView(view);
+
+        // Get references to the dialog's input fields
+        EditText etFirstName = view.findViewById(R.id.etFirstName);
+        EditText etLastName = view.findViewById(R.id.etLastName);
+        EditText etEmail = view.findViewById(R.id.etEmail);
+        EditText etAvatarUrl = view.findViewById(R.id.etAvatarUrl);
+        Button btnAddUser = view.findViewById(R.id.btnAddUser);
+
+        assert btnAddUser != null;
+
+        // If editing, pre-fill the fields with the user's current information
+        if (isEditMode && user != null) {
+            etFirstName.setText(user.getFirst_name());
+            etLastName.setText(user.getLast_name());
+            etEmail.setText(user.getEmail());
+            etAvatarUrl.setText(user.getAvatar());
+            btnAddUser.setText("Update User");
+        }
+
+        // Create the AlertDialog
+        AlertDialog dialog = builder.create();
+
+        // Set the button action
+        btnAddUser.setOnClickListener(v -> {
+            // Gather input from the fields
+            String firstName = etFirstName.getText().toString().trim();
+            String lastName = etLastName.getText().toString().trim();
+            String email = etEmail.getText().toString().trim();
+            String avatarUrl = etAvatarUrl.getText().toString().trim();
+
+            // Validate inputs
+            if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty()) {
+                Toast.makeText(MainActivity.this, "All fields are required", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                loadUsersFromDatabase();  // Load users into RecyclerView after saving
+            // Validate email and avatar URL
+            if (!isValidEmail(email)) {
+                Toast.makeText(MainActivity.this, "Invalid email address", Toast.LENGTH_SHORT).show();
+                return;
             }
-        }.execute();
+
+            if (!isValidUrl(avatarUrl)) {
+                Toast.makeText(MainActivity.this, "Invalid URL for avatar", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (isEditMode && user != null) {
+                // Update existing user
+                user.setFirstName(firstName);
+                user.setLastName(lastName);
+                user.setEmail(email);
+                user.setAvatar(avatarUrl);
+                updateUserInDatabase(user);
+            } else {
+                // Add new user
+                User newUser = new User(0, firstName, lastName, email, avatarUrl);
+                addUserToDatabase(newUser);
+            }
+
+            // Dismiss dialog after action
+            dialog.dismiss();
+        });
+
+        // Show the dialog
+        dialog.show();
     }
 
     private void showAddUserDialog() {
-        Dialog dialog = new Dialog(this);
-        dialog.setContentView(R.layout.dialog_add_user);
-
-        EditText etEmail = dialog.findViewById(R.id.etEmail);
-        EditText etFirstName = dialog.findViewById(R.id.etFirstName);
-        EditText etLastName = dialog.findViewById(R.id.etLastName);
-        EditText etAvatarUrl = dialog.findViewById(R.id.etAvatarUrl);
-        Button btnAddUser = dialog.findViewById(R.id.btnAddUser);
-
-        btnAddUser.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String email = etEmail.getText().toString();
-                String firstName = etFirstName.getText().toString();
-                String lastName = etLastName.getText().toString();
-                String avatarUrl = etAvatarUrl.getText().toString();
-
-                if (firstName.isEmpty()) {
-                    etFirstName.setError("First name is required");
-                    return;
-                }
-
-                if (lastName.isEmpty()) {
-                    etLastName.setError("Last name is required");
-                    return;
-                }
-
-                if (isValidEmail(email)) {
-                    etEmail.setError("Invalid email address");
-                    return;
-                }
-
-                if (isValidUrl(avatarUrl)) {
-                    etAvatarUrl.setError("Invalid URL");
-                    return;
-                }
-
-                User newUser = new User(0, email, firstName, lastName, avatarUrl);
-                addUserToDatabase(newUser);
-                dialog.dismiss();
-            }
-        });
-
-        dialog.show();
+        showUserDialog(null, false);
     }
 
-    // Show dialog to edit user details
-    @SuppressLint("SetTextI18n")
     private void showEditUserDialog(User user) {
-        Dialog dialog = new Dialog(this);
-        dialog.setContentView(R.layout.dialog_add_user);
-
-        EditText etFirstName = dialog.findViewById(R.id.etFirstName);
-        EditText etLastName = dialog.findViewById(R.id.etLastName);
-        EditText etAvatarUrl = dialog.findViewById(R.id.etAvatarUrl);
-        EditText etEmail = dialog.findViewById(R.id.etEmail);
-        Button btnAddUser = dialog.findViewById(R.id.btnAddUser);
-
-        // Pre-fill fields with existing user data
-        etFirstName.setText(user.getFirst_name());
-        etLastName.setText(user.getLast_name());
-        etAvatarUrl.setText(user.getAvatar());
-        etEmail.setText(user.getEmail());
-        btnAddUser.setText("Update User");
-
-        btnAddUser.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String firstName = etFirstName.getText().toString();
-                String lastName = etLastName.getText().toString();
-                String avatarUrl = etAvatarUrl.getText().toString();
-                String email = etEmail.getText().toString();
-
-                if (firstName.isEmpty()) {
-                    etFirstName.setError("First name is required");
-                    return;
-                }
-
-                if (lastName.isEmpty()) {
-                    etLastName.setError("Last name is required");
-                    return;
-                }
-
-                if (isValidEmail(email)) {
-                    etEmail.setError("Invalid email address");
-                    return;
-                }
-
-                if (isValidUrl(avatarUrl)) {
-                    etAvatarUrl.setError("Invalid URL");
-                    return;
-                }
-
-                user.setFirstName(firstName);
-                user.setLastName(lastName);
-                user.setAvatar(avatarUrl);
-                user.setEmail(email);
-
-                updateUserInDatabase(user);  // Update user details in the database
-                dialog.dismiss();
-            }
-        });
-
-        dialog.show();
+        showUserDialog(user, true);
     }
 
-    @SuppressLint("StaticFieldLeak")
     private void updateUserInDatabase(User user) {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                userDao.update(user);  // Update user details in the database
-                return null;
-            }
+        executorService.execute(() -> {
+            // Perform the database update operation on a background thread
+            userDao.update(user);
 
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                loadUsersFromDatabase();  // Refresh the list after updating a user
-            }
-        }.execute();
+            // Update the UI on the main thread after the update is complete
+            // Refresh the list after updating a user
+            runOnUiThread(this::loadUsersFromDatabase);
+        });
     }
 
     // Show a confirmation dialog before deleting a user
@@ -239,96 +210,87 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Delete User")
                 .setMessage("Are you sure you want to delete this user?")
-                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        deleteUserFromDatabase(user);
-                    }
-                })
+                .setPositiveButton("Delete", (dialog, which) -> deleteUserFromDatabase(user))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    @SuppressLint("StaticFieldLeak")
     private void deleteUserFromDatabase(User user) {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                userDao.delete(user);
-                return null;
-            }
+        executorService.execute(() -> {
+            // Perform the database deletion on a background thread
+            userDao.delete(user);
 
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                loadUsersFromDatabase();
+            // Update the UI on the main thread after deletion is complete
+            runOnUiThread(() -> {
+                loadUsersFromDatabase();  // Reload all users after deletion
 
-                // Show a Snackbar with undo option
+                // Show a Snackbar with an undo option
                 Snackbar.make(findViewById(R.id.recyclerView), "User deleted", Snackbar.LENGTH_LONG)
-                        .setAction("UNDO", new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                addUserToDatabase(user); // Re-add the user on undo
-                            }
+                        .setAction("UNDO", v -> {
+                            addUserToDatabase(user); // Re-add the user on undo
                         })
                         .show();
-            }
-        }.execute();
+            });
+        });
     }
 
-
     private boolean isValidEmail(CharSequence email) {
-        return TextUtils.isEmpty(email) || !Patterns.EMAIL_ADDRESS.matcher(email).matches();
+        // Return true if the email is not empty and matches the email pattern
+        return !TextUtils.isEmpty(email) && Patterns.EMAIL_ADDRESS.matcher(email).matches();
     }
 
     private boolean isValidUrl(String url) {
-        return TextUtils.isEmpty(url) || !Patterns.WEB_URL.matcher(url).matches();
+        // Return true if the URL is not empty and matches the URL pattern
+        return !TextUtils.isEmpty(url) && Patterns.WEB_URL.matcher(url).matches();
     }
 
-    @SuppressLint("StaticFieldLeak")
     private void addUserToDatabase(User user) {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                userDao.insert(user);
-                return null;
-            }
+        executorService.execute(() -> {
+            // Perform the database insertion on a background thread
+            userDao.insert(user);
 
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                // Successfully added the user, now print details
-                Log.d("NewUserInfo", "User added with ID: " + user.getId());
-                Log.d("NewUserInfo", "First Name: " + user.getFirst_name());
-                Log.d("NewUserInfo", "Last Name: " + user.getLast_name());
-                Log.d("NewUserInfo", "Email: " + user.getEmail());
-                Log.d("NewUserInfo", "Avatar URL: " + user.getAvatar());
-
-                loadUsersFromDatabase();  // Reload all users, including the new one
-            }
-        }.execute();
+            // Update the UI on the main thread after insertion is complete
+            // Reload all users, including the new one
+            runOnUiThread(this::loadUsersFromDatabase);
+        });
     }
 
-
-    @SuppressLint("StaticFieldLeak")
     private void loadUsersFromDatabase() {
         AppDatabase db = AppDatabase.getDatabase(this);
         UserDao userDao = db.userDao();
 
-        new AsyncTask<Void, Void, List<User>>() {
-            @Override
-            protected List<User> doInBackground(Void... voids) {
-                return userDao.getAllUsers();  // Fetch all users from the database
-            }
+        executorService.execute(() -> {
+            // Perform the database query on a background thread
+            List<User> userList = userDao.getAllUsers();
 
-            @Override
-            protected void onPostExecute(List<User> userList) {
-                userAdapter.setUserList(userList);  // Pass the full list to the adapter
+            // Update the UI on the main thread
+            runOnUiThread(() -> {
+                // Pass the full list to the adapter
+                userAdapter.setUserList(userList);
+            });
+        });
+    }
+
+
+    private void printUserList() {
+        if (userList != null && !userList.isEmpty()) {
+            Log.d("UserListInfo", "userList size: " + userList.size());
+            for (User user : userList) {
+                Log.d("UserListInfo", "ID: " + user.getId());
+                Log.d("UserListInfo", "First Name: " + user.getFirst_name());
+                Log.d("UserListInfo", "Last Name: " + user.getLast_name());
+                Log.d("UserListInfo", "Email: " + user.getEmail());
+                Log.d("UserListInfo", "Avatar URL: " + user.getAvatar());
+                Log.d("UserListInfo", "-------------------------");
             }
-        }.execute();
+        } else {
+            Log.d("UserListInfo", "User list is empty or null.");
+        }
     }
 }

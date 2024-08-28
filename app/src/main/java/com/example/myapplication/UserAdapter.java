@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
-
     private Context context;
     private List<User> userList;
     private OnUserClickListener onUserClickListener;
@@ -56,9 +56,9 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         holder.itemView.animate().alpha(1).setDuration(500).start();
 
         // Scale up from smaller size
-        holder.itemView.setScaleX(0.8f);
-        holder.itemView.setScaleY(0.8f);
-        holder.itemView.animate().scaleX(1).scaleY(1).setDuration(300).start();
+        // holder.itemView.setScaleX(0.8f);
+        // holder.itemView.setScaleY(0.8f);
+        // holder.itemView.animate().scaleX(1).scaleY(1).setDuration(300).start();
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -76,12 +76,12 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         });
     }
 
-
     @Override
     public int getItemCount() {
         return userList != null ? userList.size() : 0;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     public void setUserList(List<User> userList) {
         this.userList = userList != null ? userList : new ArrayList<>();
         notifyDataSetChanged();
