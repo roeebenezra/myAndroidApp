@@ -51,43 +51,55 @@ public class MainActivity extends AppCompatActivity {
         loadUsersFromApi();  // fetch users on startup
     }
 
-
     private void loadUsersFromApi() {
         UserApi userApi = ApiClient.getRetrofitInstance().create(UserApi.class);
-        int firstPage = 1;  // Api page numbers
+        int firstPage = 1;
         int secondPage = 2;
 
-        userApi.getUsers(firstPage).enqueue(new Callback<>() {  // Fetch the first page
+        // Fetch the first page of users
+        fetchUsersFromPage(userApi, firstPage, users -> {
+            userList = users; // Save the initial users
+
+            // Fetch the second page of users
+            fetchUsersFromPage(userApi, secondPage, moreUsers -> {
+                userList.addAll(moreUsers); // Combine both pages
+                saveUsersToDatabase(userList); // Save combined users to the database and display them
+            });
+        });
+    }
+
+    private void fetchUsersFromPage(UserApi userApi, int page, OnUsersLoadedListener listener) {
+        userApi.getUsers(page).enqueue(new Callback<UserResponse>() {
             @Override
             public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    userList = response.body().getData();
-
-                    userApi.getUsers(secondPage).enqueue(new Callback<>() {  // Fetch the second page
-                        @Override
-                        public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
-                            if (response.isSuccessful() && response.body() != null) {
-                                List<User> moreUsers = response.body().getData();
-                                userList.addAll(moreUsers);  // Combine both pages
-
-                                // Save combined users to the database and display them
-                                saveUsersToDatabase(userList);
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(@NotNull Call<UserResponse> call, @NotNull Throwable t) {
-                            Log.e("API Error", "Failed to load second page of users", t);
-                        }
-                    });
+                    List<User> users = response.body().getData();
+                    listener.onUsersLoaded(users);
+                } else {
+                    handleApiError(response.message());
                 }
             }
 
             @Override
             public void onFailure(@NotNull Call<UserResponse> call, @NotNull Throwable t) {
-                Log.e("API Error", "Failed to load first page of users", t);
+                handleApiFailure(t);
             }
         });
+    }
+
+    private void handleApiError(String message) {
+        String errorMessage = "An error occurred: " + message;
+        Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+    }
+
+    private void handleApiFailure(Throwable t) {
+        String errorMessage = "Failed to load users: " + t.getMessage();
+        Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+    }
+
+    // Listener interface to handle user list loading
+    private interface OnUsersLoadedListener {
+        void onUsersLoaded(List<User> users);
     }
 
     public void saveUsersToDatabase(List<User> userList) {
