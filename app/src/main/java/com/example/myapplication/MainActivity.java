@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import android.os.Bundle;
@@ -53,8 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadUsersFromApi() {
         UserApi userApi = ApiClient.getRetrofitInstance().create(UserApi.class);
-        // Page numbers
-        int firstPage = 1;
+        int firstPage = 1;  // Api page numbers
         int secondPage = 2;
 
         userApi.getUsers(firstPage).enqueue(new Callback<>() {  // Fetch the first page
@@ -104,18 +104,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
     @SuppressLint("SetTextI18n")
     private void showUserDialog(User user, boolean isEditMode) {
         // Initialize the dialog builder
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(isEditMode ? "Edit User" : "Add User");
 
         // Inflate the dialog layout
         View view = getLayoutInflater().inflate(R.layout.dialog_add_user, null);
         builder.setView(view);
 
         // Get references to the dialog's input fields
+        TextView title = view.findViewById(R.id.title);
         EditText etFirstName = view.findViewById(R.id.etFirstName);
         EditText etLastName = view.findViewById(R.id.etLastName);
         EditText etEmail = view.findViewById(R.id.etEmail);
@@ -124,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
 
         // If editing, pre-fill the fields with the user's current information
         if (isEditMode && user != null) {
+            title.setText("Update user info");
             etFirstName.setText(user.getFirst_name());
             etLastName.setText(user.getLast_name());
             etEmail.setText(user.getEmail());

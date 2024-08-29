@@ -1,7 +1,8 @@
 <!-- res/layout/dialog_add_user.xml -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" xmlns:app="http://schemas.android.com/apk/res-auto">
+            android:layout_height="wrap_content"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <LinearLayout
             android:layout_width="match_parent"
@@ -9,6 +10,16 @@
             android:orientation="vertical"
             android:padding="24dp">
 
+        <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="5dp"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textColor="@color/black"
+                android:text="@string/add_new_user"
+                android:textStyle="bold"/>
 
         <!-- First Name Input -->
         <com.google.android.material.textfield.TextInputLayout
@@ -20,7 +31,7 @@
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etFirstName"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Last Name Input -->
@@ -33,14 +44,14 @@
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etLastName"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Email Input -->
         <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Email"
+                android:hint="@string/email"
                 app:helperTextEnabled="true"
                 app:helperText="Enter a valid email address"
                 app:errorEnabled="true">
@@ -49,21 +60,21 @@
                     android:id="@+id/etEmail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textEmailAddress" />
+                    android:inputType="textEmailAddress"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Avatar URL Input -->
         <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Avatar URL"
+                android:hint="@string/avatar_url"
                 app:errorEnabled="true">
 
             <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etAvatarUrl"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textUri" />
+                    android:inputType="textUri"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Add User Button -->
@@ -72,8 +83,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Add User"
+                android:text="@string/add_user"
                 app:cornerRadius="8dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
     </LinearLayout>
 </ScrollView>
