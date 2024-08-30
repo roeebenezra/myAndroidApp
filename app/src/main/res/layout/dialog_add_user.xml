@@ -1,6 +1,6 @@
 <!-- res/layout/dialog_add_user.xml -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent"
+            xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
             android:layout_height="wrap_content"
             xmlns:app="http://schemas.android.com/apk/res-auto">
 
@@ -8,7 +8,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="20dp">
 
         <TextView
                 android:id="@+id/title"
@@ -47,13 +47,21 @@
                     android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Helper Text -->
+        <TextView
+                android:id="@+id/tvEmailHelper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enter a valid email address"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp"
+                tools:ignore="HardcodedText"/>
+
         <!-- Email Input -->
         <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/email"
-                app:helperTextEnabled="true"
-                app:helperText="Enter a valid email address"
                 app:errorEnabled="true">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -62,6 +70,16 @@
                     android:layout_height="wrap_content"
                     android:inputType="textEmailAddress"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Helper Text -->
+        <TextView
+                android:id="@+id/tvUrlHelper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enter a valid URL address"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp"
+                tools:ignore="HardcodedText"/>
 
         <!-- Avatar URL Input -->
         <com.google.android.material.textfield.TextInputLayout

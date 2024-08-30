@@ -2,17 +2,15 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Patterns;
 import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import android.os.Bundle;
-import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
-import android.widget.EditText;
 
 import com.google.android.material.snackbar.Snackbar;
 import org.jetbrains.annotations.NotNull;
@@ -29,13 +27,14 @@ public class MainActivity extends AppCompatActivity {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private UserAdapter userAdapter;
     private List<User> userList = new ArrayList<>();
-
+    private ProgressBar progressBar;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         setSupportActionBar(findViewById(R.id.toolbar));
+        progressBar = findViewById(R.id.progressBar);
 
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -52,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadUsersFromApi() {
+        progressBar.setVisibility(View.VISIBLE);
         UserApi userApi = ApiClient.getRetrofitInstance().create(UserApi.class);
         int firstPage = 1;
         int secondPage = 2;
@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchUsersFromPage(UserApi userApi, int page, OnUsersLoadedListener listener) {
-        userApi.getUsers(page).enqueue(new Callback<UserResponse>() {
+        userApi.getUsers(page).enqueue(new Callback<>() {
             @Override
             public void onResponse(@NotNull Call<UserResponse> call, @NotNull Response<UserResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -78,10 +78,12 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     handleApiError(response.message());
                 }
+                handleResponseOrFailure(); // Handle response or failure
             }
 
             @Override
             public void onFailure(@NotNull Call<UserResponse> call, @NotNull Throwable t) {
+                handleResponseOrFailure(); // Handle response or failure
                 handleApiFailure(t);
             }
         });
@@ -100,6 +102,14 @@ public class MainActivity extends AppCompatActivity {
     // Listener interface to handle user list loading
     private interface OnUsersLoadedListener {
         void onUsersLoaded(List<User> users);
+    }
+
+    private void handleResponseOrFailure() {
+        // Create a delay to keep the loader visible for at least 0.5 seconds
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            ProgressBar progressBar = findViewById(R.id.progressBar);
+            progressBar.setVisibility(View.GONE); // Hide the loader after 0.5 seconds
+        }, 500); // Delay of 500 milliseconds
     }
 
     public void saveUsersToDatabase(List<User> userList) {
