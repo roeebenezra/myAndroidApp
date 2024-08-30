@@ -17,10 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
-    private Context context;
+    private final Context context;
     private List<User> userList;
-    private OnUserClickListener onUserClickListener;
-    private OnUserLongClickListener onUserLongClickListener; // Listener for user long-clicks
+    private final OnUserClickListener onUserClickListener;
+    private final OnUserLongClickListener onUserLongClickListener; // Listener for user long-clicks
 
     public interface OnUserClickListener {
         void onUserClick(User user);
@@ -53,7 +53,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
         // Add an animation
         holder.itemView.setAlpha(0);
-        holder.itemView.animate().alpha(1).setDuration(500).start();
+        holder.itemView.animate().alpha(1).setDuration(1000).start();
 
         holder.itemView.setOnClickListener(v -> onUserClickListener.onUserClick(user));
 
@@ -75,7 +75,6 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
     }
 
     public static class UserViewHolder extends RecyclerView.ViewHolder {
-
         TextView firstNameTextView;
         TextView lastNameTextView;
         ImageView avatarImageView;
