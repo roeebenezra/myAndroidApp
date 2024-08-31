@@ -33,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Clear database on app start (if needed)
+//        clearDatabase();
+
         setSupportActionBar(findViewById(R.id.toolbar));
         progressBar = findViewById(R.id.progressBar);
 
@@ -300,6 +303,23 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 // Pass the full list to the adapter
                 userAdapter.setUserList(userListFromDb);
+            });
+        });
+    }
+
+    private void clearDatabase() {
+        AppDatabase db = AppDatabase.getDatabase(this);
+        UserDao userDao = db.userDao();
+
+        executorService.execute(() -> {
+            // Perform the delete operation on a background thread
+            userDao.deleteAllUsers();
+
+            // Optionally, update the UI on the main thread
+            runOnUiThread(() -> {
+                // Clear the adapter's list and notify it of changes
+                userAdapter.setUserList(new ArrayList<>());
+                Toast.makeText(this, "Database cleared successfully", Toast.LENGTH_SHORT).show();
             });
         });
     }
